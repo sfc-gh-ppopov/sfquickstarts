@@ -41,7 +41,7 @@ Duration: 5
 
 > aside negative
 >  If you are trying this Quickstart before June 20th 2023, please make sure that you enabled the following Private Preview features for your Trial Snowflake Account:
-> - [Dyamic File Access](https://docs.snowflake.com/en/LIMITEDACCESS/udf-python-file-handler)
+> - [Dynamic File Access](https://docs.snowflake.com/en/LIMITEDACCESS/udf-python-file-handler)
 > - [ST_TRANSFORM](https://docs.snowflake.com/LIMITEDACCESS/st_transform)
 
 [app.snowflake.com](https://app.snowflake.com/)
