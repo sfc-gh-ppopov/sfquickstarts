@@ -144,12 +144,9 @@ Similarly to the above dataset, search and get the `Netherlands Open Map Data - 
 
 <img src ='assets/geo_analysis_geometry_23.png' width=500>
 
-<<<<<<< Updated upstream
-=======
 > aside negative
 >  After clicking "Get" you may see a message saying "Getting Data Ready. This will take at least 10 minutes.". In this case simply continue this quickstart and come back to this step when we start using this dataset.
 
->>>>>>> Stashed changes
 ### Install CARTO Analytics Toolbox from the Snowflake Marketplace
 
 Now you can acquire CARTO’s Analytics Toolbox from the Snowflake Marketplace. This will share UDFs (User defined functions) to your account which will allow you to perform even more geospatial analytics. 
