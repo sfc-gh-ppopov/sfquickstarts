@@ -795,11 +795,7 @@ As we create an H3 layer we will need to configure the layer type from the query
 
 <img src ='assets/geo_analysis_geometry_34.gif' width=700>
 
-<<<<<<< Updated upstream
 H3 layers allow us to show aggregated information at different resolutions for different zoom levels. Because of this, when we style the layer, we need to decide an aggregation method for the attribute to show, in this example we will use `SIGNAL_STRENGTH`.
-=======
-H3 layers allow us to show aggregated information at different resolutions for different zoom levels. Because of this, when we style the layer, we need to decide on an aggregation method for the attribute to show, in this example we will use `signal_strength`.
->>>>>>> Stashed changes
 
 <img src ='assets/geo_analysis_geometry_35.png' width=700>
 
