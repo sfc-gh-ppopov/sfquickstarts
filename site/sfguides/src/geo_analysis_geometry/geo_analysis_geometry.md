@@ -3,9 +3,9 @@ id: geo_analysis_geometry
 summary: This is a sample Snowflake Guide
 categories: Getting-Started
 environments: web
-status: Hidden 
+status: Published 
 feedback link: https://github.com/Snowflake-Labs/sfguides/issues
-tags: Getting Started, Data Science, Data Engineering, Twitter 
+tags: Getting Started, Geospatial, Python UDFs 
 
 # Geospatial Analysis using Geometry Data Type
 <!-- ----------------------------------------- -->
@@ -18,21 +18,32 @@ Geospatial query capabilities in Snowflake are built upon a combination of data 
 ### Prerequisites
 * Quick Video [Introduction to Snowflake](https://www.youtube.com/watch?v=fEtoYweBNQ4&ab_channel=SnowflakeInc.)
 * Snowflake [Data Loading Basics](https://www.youtube.com/watch?v=us6MChC8T9Y&ab_channel=SnowflakeInc.) Video
+* [CARTO in a nutshell ](https://docs.carto.com/getting-started/carto-in-a-nutshell)web guide
+* [CARTO Spatial Extension for Snowflake](https://www.youtube.com/watch?v=9W_Attbs-fY) video 
 
 ### What You’ll Learn
 * How to acquire geospatial data from the Snowflake Marketplace
-* How to load geospatial data from internal and external Stages
+* How to load geospatial data from a Stage
 * How to interpret the `GEOMETRY` data type and how it differs from the `GEOGRAPHY`
 * How to understand the different formats that `GEOMETRY` can be expressed in
 * How to do spatial analysis using the GEOMETRY and GEOGRAPHY data types
+* How to use Python UDFs for reading Shapefiles and creating custom functions
+* How to use Global Discrete Grid and H3 functions
+* How to use Search Optimization to speed up geospatial queries
 
 ### What You’ll Need
 * A supported Snowflake [Browser](https://docs.snowflake.com/en/user-guide/setup.html)
 * Sign-up for a [Snowflake Trial](https://signup.snowflake.com/)  OR have access to an existing Snowflake account with the `ACCOUNTADMIN` role or the `IMPORT SHARE `privilege. Select the Enterprise edition, AWS as a cloud provider and US East (Northern Virginia) or EU (Frankfurt) as a region.
+* Sign-up for a  [CARTO Trial](http://app.carto.com/signup) (OR  have access to an existing CARTO account). Select the same region (continent) as for the Snowflake account.
 
 ### What You’ll Build
-A sample use case that involves energy grids and LTE cell towers in Netherlands You will answer the following questions:
-* What the length of all energy grids in each municipality in Netherlands
+A sample use case that involves energy grids and LTE cell towers in the Netherlands You will answer the following questions:
+* What is the length of all energy grids in each municipality in the Netherlands?
+* What cell towers lack electricity cables nearby?
+* What municipalities in the Netherlands have good/poor LTE coverage?
+* What percent of the Dutch highways have LTE coverage?
+* What is the estimated quality of LTE signal on Dutch highways?
+
 
 <!-- ----------------------------------------- -->
 ## Setup your Account
@@ -170,9 +181,9 @@ Congratulations! Now you have data and the analytics toolbox!
 
 Duration: 5
 
-Now that you understand how to get data from Marketplace, let's try another way of getting data, namely, getting it from the external S3 storage. While we loadinging data we will learn formats supported by geospatial data types, use Python UDFs constructors.
+Now that you understand how to get data from the Marketplace, let's try another way of getting data, namely, getting it from the external S3 storage. While you are loadinging data you will learn formats supported by geospatial data types, use Python UDFs constructors.
 
-In this step, we're going to use Snowflake's [Create an External Stage Using Snowsight](https://docs.snowflake.com/en/user-guide/data-load-s3-create-stage#create-an-external-stage-using-snowsight) feature to create a table using a dataset with energy grids stored in the external Stage.
+In this step, you're going to use Snowflake's [Create an External Stage Using Snowsight](https://docs.snowflake.com/en/user-guide/data-load-s3-create-stage#create-an-external-stage-using-snowsight) feature to create a table using a dataset with energy grids stored in the external Stage.
 
 Navigate to the query editor by clicking on  `Worksheets`  on the top left navigation bar and choose your warehouse.
 * Click the + Worksheet button in the upper right of your browser window. This will open a new window.
@@ -180,7 +191,7 @@ Navigate to the query editor by clicking on  `Worksheets`  on the top left navig
 
 <img src ='assets/geo_analysis_geometry_13.png' width=700>
 
-Create a new database and schema where we will store datasets in the Geography data type. Copy & paste the SQL below into your worksheet editor, put your cursor somewhere in the text of the query you want to run (usually the beginning or end), and either click the blue "Play" button in the upper right of your browser window, or press `CTRL+Enter` or `CMD+Enter` (Windows or Mac) to run the query.
+Create a new database and schema where you will store datasets in the Geography data type. Copy & paste the SQL below into your worksheet editor, put your cursor somewhere in the text of the query you want to run (usually the beginning or end), and either click the blue "Play" button in the upper right of your browser window, or press `CTRL+Enter` or `CMD+Enter` (Windows or Mac) to run the query.
 
 ```
 CREATE OR REPLACE DATABASE GEOLAB;
@@ -233,7 +244,7 @@ ALTER SESSION SET geometry_output_format = 'GEOJSON';
 
 The [alter session](https://docs.snowflake.com/en/sql-reference/sql/alter-session.html) command lets you set a parameter for your current user session, which in this case is  `GEOMETRY_OUTPUT_FORMAT`. The default value for those parameters is `'GEOJSON'`, so normally you wouldn't have to run this command if you want that format, but this guide wants to be certain the next queries are run with the `'GEOJSON'` output.
 
-Now run the following query against the `nl_cables_stations` table to see energy grids in Netherlands.
+Now run the following query against the `nl_cables_stations` table to see energy grids in the Netherlands.
 
 ```
 SELECT geometry
@@ -247,7 +258,7 @@ In the result set, notice the `geometry` column and how it displays a JSON repre
 {"coordinates": [[[1.852040750000000e+05, 3.410349640000000e+05], [1.852044840000000e+05,3.410359860000000e+05]], [[1.852390240000000e+05,3.411219340000000e+05], ... ,[1.852800600000000e+05,3.412219960000000e+05]]   ], "type": "MultiLineString" }
 ```
 
-Unlike `GEOGRAPHY`, which treats all points as longitude and latitude on a spherical earth, `GEOMETRY` considers the Earth as a flat surface. That is why in `GEOMETRY` we use the planar coordinate system, where coordinates are similar to X and Y coordinates that you used in the geometry course in your school. More information about Snowflake's specification can be found [here](https://docs.snowflake.com/en/sql-reference/data-types-geospatial.html).
+Unlike `GEOGRAPHY`, which treats all points as longitude and latitude on a spherical earth, `GEOMETRY` considers the Earth as a flat surface. More information about Snowflake's specification can be found [here](https://docs.snowflake.com/en/sql-reference/data-types-geospatial.html).
 In this example it uses the scientific notation and the numbers are much larger than latitude and longitude boundaries [-180; 180].
 
 <img src ='assets/geo_analysis_geometry_14.png' width=700>
@@ -273,7 +284,7 @@ EWKT looks different than GeoJSON, and is arguably more readable. Here you can m
 SRID=28992;MULTILINESTRING((185204.075 341034.964,185204.484 341035.986), ... ,(185276.402 341212.688,185279.319 341220.196,185280.06 341221.996))
 ```
 
-EWKT also shows spatial reference identifier and in our example, we have a dataset in [Amersfoort / RD New](https://epsg.io/28992) spatial reference system, that is why displayed SRID is 28992.
+EWKT also shows spatial reference identifier and in this example, you have a dataset in [Amersfoort / RD New](https://epsg.io/28992) spatial reference system, that is why displayed SRID is 28992.
 
 Lastly, look at the WKB output. Run the following query:
 
@@ -296,9 +307,9 @@ Notice how WKB is incomprehensible to a human reader. However, this format is ha
 
 Duration: 10
 
-Now that you have a basic understanding of how the `GEOMETRY` data type works and what a geospatial representation of data looks like in various output formats, it's time to walkthrough a scenario that requires you to use constructors to load data.  We will do it while trying one more way of getting data, namely, from the Shapefile file stored in the internal stage. 
+Now that you have a basic understanding of how the `GEOMETRY` data type works and what a geospatial representation of data looks like in various output formats, it's time to walkthrough a scenario that requires you to use constructors to load data.  You will do it while trying one more way of getting data, namely, from the Shapefile file stored in the internal stage. 
 
-First download [this](https://sfquickstarts.s3.us-west-1.amazonaws.com/vhol_spatial_analysis_geometry_geography/nl_areas.zip) Shapefile which contains boundaries of administrative areas in Netherlands. 
+First download [this](https://sfquickstarts.s3.us-west-1.amazonaws.com/vhol_spatial_analysis_geometry_geography/nl_areas.zip) Shapefile which contains boundaries of administrative areas in the Netherlands. 
 Then in the navigation menu, select Data > Databases, choose `GEOLAB.GEOMETRY`, and click Create > Stage > Snowflake Managed.
 
 <img src ='assets/geo_analysis_geometry_9.png'>
@@ -313,7 +324,7 @@ Then select newly created Stage and click `+ Files` to upload a new file.
 
 Browse the file you just downloaded and click  `Upload`.
 
-To load that data we will use Python UDF that reads data from Shapefile .
+To load that data you will use Python UDF that reads data from Shapefile .
 
 Run the following query that creates a UDF:
 
@@ -354,9 +365,9 @@ FROM table(PY_LOAD_GEODATA(build_scoped_file_url(@stageshp, 'nl_areas.zip'), 'nl
 This query fails with the the error: *Geometry validation failed: Geometry has invalid self-intersections. A self-intersection point was found at (559963, 5.71069e+06)*. 
 
 > aside negative
->  The constructor function determines if the shape is valid according to the [Open Geospatial Consortium’s Simple Feature Access / Common Architecture](https://www.ogc.org/standards/sfa) standard. If the shape is invalid, the function reports an error and does not create the GEOMETRY object. That is what happened in our example.
+>  The constructor function determines if the shape is valid according to the [Open Geospatial Consortium’s Simple Feature Access / Common Architecture](https://www.ogc.org/standards/sfa) standard. If the shape is invalid, the function reports an error and does not create the GEOMETRY object. That is what happened in your example.
 
-To fix this we can allow ingestion of invalid shape by setting the corresponding parameter to True. Let's run the SELECT statement again, but update the query to see how many shapes are invalid. Run the following query:
+To fix this you can allow ingestion of invalid shape by setting the corresponding parameter to True. Let's run the SELECT statement again, but update the query to see how many shapes are invalid. Run the following query:
 
 ```
 SELECT to_geometry(wkt, True) AS geometry,
@@ -387,7 +398,7 @@ ORDER BY is_valid ASC;
 > aside negative
 >  The ST_BUFFER with some small positive or negative value for the distance *sometimes* can help to fix invalid shapes. However, you should remember that the unit of measurement for the distance parameter in the ST_BUFFER will be the same as your data. Therefore, if your data utilizes lon/lat values, the distance's units will also be degrees.
 
-Now all shapes are valid and the data ready to be ingested. One additional thing we should do is to set SRID, since othervise it will be set to 0. This dataset is in the reference system [WGS 72 / UTM zone 31N](https://epsg.io/32231), so it makes sense to add the SRID=32231 to the constructor function.
+Now all shapes are valid and the data ready to be ingested. One additional thing you should do is to set SRID, since othervise it will be set to 0. This dataset is in the reference system [WGS 72 / UTM zone 31N](https://epsg.io/32231), so it makes sense to add the SRID=32231 to the constructor function.
 
 Run the following query:
 
@@ -408,10 +419,10 @@ Excellent! Now that all the datasets are successfully loaded, let's proceed to t
 
 Duration: 25
 
-To showcase the capabilities of the GEOMETRY data type, we will explore several use cases. In these scenarios, we'll assume we are analysts working for an energy utilities company responsible for maintaining electrical grids.
+To showcase the capabilities of the GEOMETRY data type, you will explore several use cases. In these scenarios, you'll assume you are an analyst working for an energy utilities company responsible for maintaining electrical grids.
 
 ### What is the length of the electricity cables?
-In the first use case we will calculate the length of electrical cables our organization is responsible for in each administrative area within the Netherlands. We'll be utilizing two datasets: with power infrastructure of the Netherlands and the borders of Dutch administrative areas. First, let's check the sample of each dataset.
+In the first use case you will calculate the length of electrical cables your organization is responsible for in each administrative area within the Netherlands. You'll be utilizing two datasets: with power infrastructure of the Netherlands and the borders of Dutch administrative areas. First, let's check the sample of each dataset.
 
 Run the following query to see the content of NL_CABLES_STATIONS table:
 
@@ -435,7 +446,7 @@ LIMIT 5;
 
 <img src ='assets/geo_analysis_geometry_17.png'>
 
-In order to compute the length of all cables per administrative area, it's essential that both datasets adhere to the same mapping system. We have two options: either re-project `nl_administrative_areas` to SRID 28992, or reproject `nl_cables_stations` to SRID 32231. For this exercise, let's choose the first option.
+In order to compute the length of all cables per administrative area, it's essential that both datasets adhere to the same mapping system. You have two options: either re-project `nl_administrative_areas` to SRID 28992, or reproject `nl_cables_stations` to SRID 32231. For this exercise, let's choose the first option.
 
 Run the following query:
 ```
@@ -451,15 +462,15 @@ ORDER BY 2 DESC;
 
 <img src ='assets/geo_analysis_geometry_18.png'>
 
-We have five areas densely covered by electicity cables, those are the ones that our company is responsible for. For our first analysis, we will focus on these areas.
+You have five areas densely covered by electicity cables, those are the ones that your company is responsible for. For the first analysis, you will focus on these areas.
 
 ### What cell towers lacking electricity cables nearby
 
 In many areas, especially rural or remote ones, cell towers might be located far from electricity grids. This can pose a challenge in providing a reliable power supply to these towers. They often rely on diesel generators, which can be expensive to operate and maintain and have environmental implications. Furthermore, power outages can lead to disruptions in mobile connectivity, impacting individuals, businesses, and emergency services.
 
-Our analysis aims to identify mobile cell towers that are not near an existing electricity grid. This information could be used to prioritize areas for grid expansion, to improve the efficiency of renewable energy source installations (like solar panels or wind turbines), or to consider alternative energy solutions.
+Your analysis aims to identify mobile cell towers that are not near an existing electricity grid. This information could be used to prioritize areas for grid expansion, to improve the efficiency of renewable energy source installations (like solar panels or wind turbines), or to consider alternative energy solutions.
 
-For this and the next examples let's use GEOGRAPHY data type as it can be easyly visualized using CARTO. As a first step, let's create GEOGRAPHY equivalents for energy grids and boundaries table. For that we need to reproject GEOMETRY column in each of the tables into mapping system WGS 84 (SRID=4326) and then convert to GEOGRAPHY data type. Run following queries that create new tables and enable search optimization for each of them in order to iincrease the performance of spatial operations. 
+For this and the next examples let's use GEOGRAPHY data type as it can be easyly visualized using CARTO. As a first step, let's create GEOGRAPHY equivalents for energy grids and boundaries table. For that you need to reproject GEOMETRY column in each of the tables into mapping system WGS 84 (SRID=4326) and then convert to GEOGRAPHY data type. Run following queries that create new tables and enable search optimization for each of them in order to iincrease the performance of spatial operations. 
 
 ```
 // Creating a table with GEOGRAPHY for nl_administrative_areas
@@ -486,7 +497,7 @@ ORDER BY ST_GEOHASH(geom);
 ALTER TABLE geolab.geography.nl_cables_stations ADD SEARCH OPTIMIZATION ON GEO(geom);
 ```
 
-We can now go to the CARTO account and visualize administrative areas and cables information in CARTO Builder.
+You can now go to the CARTO account and visualize administrative areas and cables information in CARTO Builder.
 * Create a new map. Use the navigation menu on the left to get to Maps and then click on (+) New Map.
 
 <img src ='assets/geo_analysis_geometry_27.png' width=700>
@@ -522,7 +533,7 @@ ORDER BY ST_GEOHASH(geom);
 ALTER TABLE geolab.geography.nl_4g ADD SEARCH OPTIMIZATION ON GEO(geom); 
 ```
 
-Finally, we will find all cell towers that don't have an energy line within a 2-kilometer radius. For each cell tower we'll calculate the distance to the nearest electricity cable. In CARTO Builder click on the Add `Source From` → `Custom Query (SQL)` and make sure you have selected Snowflake Connection that you have created in previous steps.
+Finally, you will find all cell towers that don't have an energy line within a 2-kilometer radius. For each cell tower you'll calculate the distance to the nearest electricity cable. In CARTO Builder click on the Add `Source From` → `Custom Query (SQL)` and make sure you have selected Snowflake Connection that you have created in previous steps.
 
 <img src ='assets/geo_analysis_geometry_32.gif' width=700>
 
@@ -551,16 +562,16 @@ You can modify the colors of cell towers in the output and expand their radius i
 
 Duration: 20
 
-In the previous section you've found cell cell towers that don't have electicity cables nearby. But what about answering more sophisticated questions, like what areas in Netherlands have very good and bad coverage by LTE (4G) network? You can use geospatial functions combined with spatial join and H3 functions from Carto toolbox to find out.
+In the previous section you've found cell cell towers that don't have electicity cables nearby. But what about answering more sophisticated questions, like what areas in the Netherlands have very good and bad coverage by LTE (4G) network? You can use geospatial functions combined with spatial join and H3 functions from Carto toolbox to find out.
 
-### What municipalities in Netherlands have good/poor LTE coverage?
+### What municipalities in the Netherlands have good/poor LTE coverage?
 
-You have been using `NL_CELLTOWERS` table, which stores the locations of cell towers. To find municipalities in Netherlans with good and bad coverage by LTE network, we will undertake a two-step process as follows:
+You have been using `NL_CELLTOWERS` table, which stores the locations of cell towers. To find municipalities in the Netherlans with good and bad coverage by LTE network, we will undertake a two-step process as follows:
 
-* For every LTE cell tower, we will calculate the coverage area.
+* For every LTE cell tower, you will calculate the coverage area.
 * For every Dutch municipality, calculate the area covered by LTE network.
 
-`ST_BUFFER` from the Carto toolbox can be used to calculate the coverage area for each LTE cell tower. In `NL_CELLTOWERS` table, there is a field _cell_range_ which can be used as a value of radius in ST_BUFFER. For the sake of this example we will assume that a good signal can be received no further than 2000 meters away from the LTE cell.
+`ST_BUFFER` from the Carto toolbox can be used to calculate the coverage area for each LTE cell tower. In `NL_CELLTOWERS` table, there is a field _cell_range_ which can be used as a value of radius in ST_BUFFER. For the sake of this example you will assume that a good signal can be received no further than 2000 meters away from the LTE cell.
 
 Run the following two queries in your Snowflake's worksheet: 
 
@@ -634,7 +645,7 @@ Let's now for every municipality compute the following:
 * The area that is covered by the LTE network
 * The numerical value of coverage ratio by the LTE network
 
-Use the table `nl_celltowers`, and first join it with `nl_administrative_areas` using `ST_INTERSECTS` predicate to match cell towers to the municipalities they cover. Then we use `PY_UNION_AGG` to get a combined coverage polygon. Then use `ST_INTERSECTION` to find an portion of the municipality that is covered by the LTE signal. Then we compute the covered area in square meters. The result will be saved in the new table. To speed up queries against that newly created table, you will enable the search optimization feature.
+Use the table `nl_celltowers`, and first join it with `nl_administrative_areas` using `ST_INTERSECTS` predicate to match cell towers to the municipalities they cover. Then you use `PY_UNION_AGG` to get a combined coverage polygon. Then use `ST_INTERSECTION` to find an portion of the municipality that is covered by the LTE signal. Then you compute the covered area in square meters. The result will be saved in the new table. To speed up queries against that newly created table, you will enable the search optimization feature.
 
 Run the following two queries:
 
@@ -670,9 +681,9 @@ FROM geolab.geography.nl_municipalities_coverage;
 
 ### What percent of the Dutch highways have LTE coverage?
 
-Now imagine you want to calculate what percentage of highways in Netherlands are covered by LTE network. To get the number, you can employ the `Netherlands Open Map Data` dataset that has NL motorways.
+Now imagine you want to calculate what percentage of highways in the Netherlands are covered by LTE network. To get the number, you can employ the `Netherlands Open Map Data` dataset that has NL motorways.
 
-Run the foillowing query in your Snowflake worksheet:
+Run the following query in your Snowflake worksheet:
 
 ```
 SELECT SUM(ST_LENGTH(ST_INTERSECTION(coverage.coverage_geom, roads.geo_cordinates))) as covered_length,
@@ -684,15 +695,15 @@ WHERE ST_INTERSECTS(coverage.municipality_geom, roads.geo_cordinates)
 AND class in ('primary', 'motorway');
 ```
 
-It seems our LTE network covers almost 100% of the highways. A good number to call out in a marketing campaign.
+It seems your LTE network covers almost 100% of the highways. A good number to call out in a marketing campaign.
 
 ### Estimating quality of LTE signal on Dutch highways
 
-In the previous section we found outs that almost all highways in Netetherlands are within a range of LTE tower. But the LTE signal may have a different quality depeneding on how close is the tower or how many towers we have. The next question you may ask as an analyis is what motorways in the NL have poor signal quality. 
+In the previous section you found out that almost all highways in Netetherlands are within a range of LTE tower. But the LTE signal may have a different quality depeneding on how close is the tower or how many towers you have. The next question you may ask as an analyis is what motorways in the NL have poor signal quality. 
 
-For this we need to build a signal decay model. We will also H3 to represents signal distribution around the cell towers. H3 functions from `CARTO’s Analytics Toolbox` will help us with that.
+For this you need to build a signal decay model. You will also H3 to represents signal distribution around the cell towers. H3 functions from `CARTO’s Analytics Toolbox` will help you with that.
 
-In the following query, we will create a table with an H3 cell id for each cell tower. To get the H3 cell id, we will use the `H3_FROMGEOGPOINT` function:
+In the following query, you will create a table with an H3 cell id for each cell tower. To get the H3 cell id, you will use the `H3_FROMGEOGPOINT` function:
 
 ```
 CREATE OR REPLACE TABLE geolab.geography.nl_lte AS
@@ -704,9 +715,9 @@ WHERE radio = 'LTE'
 ORDER BY h3;
 ```
 
-Now that we know H3 cell for each LTE tower we can find it's neighboring H3 cells and estimate signal strength in them. First, we will apply the `H3_KRING` function to compute all neighboring H3 cells within a certain distance from a given H3 cell. The distance is calculated by dividing the `CELL_RANGE` by 586 meters, which represents the spacing between H3 cells at resolution 9.  Since `H3_KRING` yields an array, we must use the lateral joing to flatten these array.
+Now that you know H3 cell for each LTE tower you can find it's neighboring H3 cells and estimate signal strength in them. First, you will apply the `H3_KRING` function to compute all neighboring H3 cells within a certain distance from a given H3 cell. The distance is calculated by dividing the `CELL_RANGE` by 586 meters, which represents the spacing between H3 cells at resolution 9.  Since `H3_KRING` yields an array, you can use the lateral joing to flatten these array.
 
-Then we will create a decay function based on the H3 distance, so we need to determine the maximum H3 distance for each antenna. We can then group the data by H3 cell and choose the highest signal strength within that cell. Multiple towers can cover the same H3 cell multiple times; thus, we will select the one with the strongest signal.
+Then you will create a decay function based on the H3 distance, so you need to determine the maximum H3 distance for each antenna. You can then group the data by H3 cell and choose the highest signal strength within that cell. Multiple towers can cover the same H3 cell multiple times; thus, you will select the one with the strongest signal.
 
 The signal will range from 0 (poor) to 100 (strongest). The model multiplies the "starting signal strength" of 100 by the distance between the antenna and the H3 cell, and it adds more noise as the H3 cell is further away. 
 
@@ -740,7 +751,7 @@ GROUP BY h3
 ORDER BY h3;
 ```
 
-Now that we have created our signal decay model, let’s visualize it in CARTO. For that, we can just run the following query from the query console into a new map.
+Now that you have created your signal decay model, let’s visualize it in CARTO. For that, you can just run the following query from the query console into a new map.
 
 ```
 SELECT h3,
@@ -749,25 +760,25 @@ FROM geolab.geography.nl_lte_coverage_h3;
 ```
 
 > aside positive
->  Note that we don’t have a `GEOGRAPHY` on this query. This is because CARTO has native support of H3 and can show the H3 geography representation on the browser without the need to store and move the geography from the database to the browser. 
+>  Note that you don’t have a `GEOGRAPHY` on this query. This is because CARTO has native support of H3 and can show the H3 geography representation on the browser without the need to store and move the geography from the database to the browser. 
 
-As we create an H3 layer we will need to configure the layer type from the query console:
+As you create an H3 layer you will need to configure the layer type from the query console:
 
 <img src ='assets/geo_analysis_geometry_34.gif' width=700>
 
-H3 layers allow us to show aggregated information at different resolutions for different zoom levels. Because of this, when we style the layer, we need to decide an aggregation method for the attribute to show, in this example we will use `SIGNAL_STRENGTH`.
+H3 layers allow you to show aggregated information at different resolutions for different zoom levels. Because of this, when you style the layer, you need to decide an aggregation method for the attribute to show, in this example you will use `SIGNAL_STRENGTH`.
 
 <img src ='assets/geo_analysis_geometry_35.png' width=700>
 
 Remember to select a color palette of your liking and the color scale (the default is custom but we want to *Quantize* bins for this use case).
-We can also change the relation between the zoom level and the resolution. The higher the resolution configuration, the more granularity we will see on the map but it will also take longer to load. Select resolution 5.
+You can also change the relation between the zoom level and the resolution. The higher the resolution configuration, the more granularity you will see on the map but it will also take longer to load. Select resolution 5.
 
 <img src ='assets/geo_analysis_geometry_36.gif' width=700>
 
 Let’s now use the road network from `NL Open Map Data` to see which road segments have good coverage and which do not.
-To intersect the road layer with the H3 signal strength layer we need to find H3 cells covering all motorways in the NL.
+To intersect the road layer with the H3 signal strength layer you need to find H3 cells covering all motorways in the NL.
 
-The query below demonstrates one way of doing this. First we split the road geometries into simple segments and compute the H3 index for in the middle of each segment. Then we aggregate all segments back. Run the following query:
+The query below demonstrates one way of doing this. First you split the road geometries into simple segments and compute the H3 index for in the middle of each segment. Then you aggregate all segments back. Run the following query:
 
 ```plaintext
 CREATE OR REPLACE TABLE GEOLAB.GEOGRAPHY.NL_ROADS_H3 AS 
@@ -779,8 +790,8 @@ WITH roads AS
    FROM OSM_NL.NETHERLANDS.V_ROAD roads
    WHERE class in ('primary', 'motorway')
      AND st_dimension(geo_cordinates) = 1),
-// In order to compute H3 cells corresponding to each road we need to first
-// split roads into the line segments. We do it using the ST_POINTN function
+// In order to compute H3 cells corresponding to each road you need to first
+// split roads into the line segments. You do it using the ST_POINTN function
      segments AS
   (SELECT road_id,
           value::integer AS segment_id,
@@ -790,8 +801,8 @@ WITH roads AS
    FROM roads,
         LATERAL flatten(ARRAY_GENERATE_RANGE(1, st_npoints(geom)))) 
 // Next table build the H3 cells covering the roads
-// For each line segment we find a corresponding H3 cell and then agggerate by road id and H3
-// At this point we switched from segments to H3 cells covering the roads.
+// For each line segment you find a corresponding H3 cell and then agggerate by road id and H3
+// At this point you switched from segments to H3 cells covering the roads.
 SELECT road_id,
        h3_center AS h3,
        any_value(geom) AS road_geometry
@@ -804,7 +815,7 @@ If you visualize table `GEOLAB.GEOGRAPHY.NL_ROADS_H3` in CARTO Builder (`Add Sou
 
 <img src ='assets/geo_analysis_geometry_39.png' width=700>
 
-Now we use signal decay model that we've build privously to estimate the average signal along each highway. For this we need to join two tables (tesselated highways and the signal strenght) using H3 cell id and aggregate the result by road id.
+Now you use signal decay model that you've build privously to estimate the average signal along each highway. For this you need to join two tables (tesselated highways and the signal strenght) using H3 cell id and aggregate the result by road id.
 
 Run the following two queries.
 
@@ -823,7 +834,7 @@ ORDER BY ST_GEOHASH(geom);
 ALTER TABLE geolab.geography.osm_nl_not_covered ADD SEARCH OPTIMIZATION ON GEO(geom);
 ```
 
-Now that we have classified road segments by signal and no signal, we can run the following simple query to get the length of each geography in meters:
+Now that you have classified road segments by signal and no signal, you can run the following simple query to get the length of each geography in meters:
 
 ```
 SELECT signal_category,
@@ -832,15 +843,15 @@ FROM geolab.geography.osm_nl_not_covered
 GROUP BY signal_category;
 ```
 
-We now know that we have 13,938 km with good coverage and 2,331 with poor/no coverage. Interestingly, that is about 15 % of the NL roads!
+You now know that you have 13,938 km with good coverage and 2,331 with poor/no coverage. Interestingly, that is about 15 % of the NL roads!
 
-Lastly, with this layer, we can add it to our CARTO map and visualize the road segment according to the `SIGNAL_CATEGORY` feature we created.
+Lastly, with this layer, you can add it to your CARTO map and visualize the road segment according to the `SIGNAL_CATEGORY` feature you created.
 
-For this, we can add the layer via `Add source from` → `Data Explorer`. Then select your connection and the `GEOLAB.GEOGRAPHY.OSM_NL_NOT_COVERED` table.
+For this, you can add the layer via `Add source from` → `Data Explorer`. Then select your connection and the `GEOLAB.GEOGRAPHY.OSM_NL_NOT_COVERED` table.
 
 <img src ='assets/geo_analysis_geometry_38.png' width=700>
 
-Once we have our second layer on the map, we can click on it to style it and show the stroke color based on our `SIGNAL_CATEGORY` column. For that create a “Custom palette” with just two colors: gray for roads with good signal and red for roads with no/poor signal.
+Once you have your second layer on the map, you can click on it to style it and show the stroke color based on your `SIGNAL_CATEGORY` column. For that create a “Custom palette” with just two colors: gray for roads with good signal and red for roads with no/poor signal.
 
 <img src ='assets/geo_analysis_geometry_37.gif' width=700>
 
